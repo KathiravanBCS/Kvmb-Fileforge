@@ -1,0 +1,61 @@
+{
+  "name": "fileforge-webui",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.15.0 <23"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@casl/ability": "^7.1.1",
+    "@kvmb/react-data-grid": "^0.2.0",
+    "@mantine/core": "^9.7.4",
+    "@mantine/dates": "^9.7.4",
+    "@mantine/form": "^9.7.4",
+    "@mantine/hooks": "^9.7.4",
+    "@mantine/notifications": "^9.7.4",
+    "@tabler/icons-react": "^3.50.0",
+    "@tanstack/react-query": "^5.105.3",
+    "@tanstack/react-table": "^8.21.3",
+    "axios": "^1.21.0",
+    "cropperjs": "^1.7.0",
+    "dayjs": "^1.11.23",
+    "exceljs": "^4.4.0",
+    "react": "^19.3.1",
+    "react-cropper": "^2.3.3",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5",
+    "zod": "^4.6.7",
+    "zustand": "^5.0.16"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.14.0",
+    "jsdom": "^26.1.0",
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,15 @@
+/* Neutral pills (rather than the default accent-filled ones) so the tabs stay quiet next to the content. */
+.list {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.tab {
+  flex-shrink: 0;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+
+  &[data-active] {
+    background-color: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6));
+    color: var(--mantine-color-text);
+  }
+}

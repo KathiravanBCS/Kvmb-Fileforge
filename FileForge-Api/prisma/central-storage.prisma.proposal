@@ -1,0 +1,161 @@
+// PROPOSAL ONLY: not part of the schema and not read by Prisma (extension is .proposal on purpose).
+// Applied to prisma/schema.prisma at Checkpoint 2, AFTER fileforge_migration_v1_1_to_v1_2_central_storage.sql has been run
+// in pgAdmin and verified. Prisma is a query client here: never `migrate` / `db push`. After applying, the models are
+// compared with a read-only `prisma db pull --print` of the live database.
+//
+// EDITS TO EXISTING PARTS OF prisma/schema.prisma (additive, no existing field changes)
+// ---------------------------------------------------------------------------------------------------------------
+// 1. datasource db:        schemas = ["core", "master", "storage", "audit"]
+// 2. model users           add:
+//      system_admins_system_admins_user_idTousers      system_admins[]       @relation("system_admins_user_idTousers")
+//      system_admins_system_admins_granted_byTousers   system_admins[]       @relation("system_admins_granted_byTousers")
+//      central_connection                              central_connection[]
+//      central_files_central_files_owner_user_idTousers central_files[]      @relation("central_files_owner_user_idTousers")
+//      central_files_central_files_uploaded_byTousers   central_files[]      @relation("central_files_uploaded_byTousers")
+// 3. model storage_provider_types add:
+//      central_connection  central_connection[]
+//
+// NOT MODELLED (Prisma cannot express it; the database still enforces it):
+//   uq_central_connection_single  UNIQUE ((true)) WHERE NOT is_deleted   (exactly one live central connection)
+//   trg_central_connection_identity  (account/owner/drive immutable; account must belong to owner_user_id)
+//   all CHECK constraints and updated_at triggers
+//
+// NEW MODELS
+// ---------------------------------------------------------------------------------------------------------------
+
+/// Global administrators. READ-ONLY for the application: rows are created only by reviewed SQL.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model system_admins {
+  id         BigInt    @id @default(autoincrement())
+  user_id    BigInt
+  is_active  Boolean   @default(true)
+  granted_by BigInt?
+  granted_at DateTime  @default(now()) @db.Timestamptz(6)
+  note       String?   @db.VarChar(300)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  created_by BigInt?
+  updated_at DateTime? @db.Timestamptz(6)
+  updated_by BigInt?
+  is_deleted Boolean   @default(false)
+  deleted_at DateTime? @db.Timestamptz(6)
+  deleted_by BigInt?
+  users_system_admins_user_idTousers    users  @relation("system_admins_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_system_admins_granted_byTousers users? @relation("system_admins_granted_byTousers", fields: [granted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // Partial unique: use findFirst with is_deleted: false, never findUnique.
+  @@unique([user_id], map: "uq_system_admins_user", where: raw("(is_deleted = false)"))
+  @@index([id], map: "ix_system_admins_active", where: raw("(is_deleted = false)"))
+  @@schema("core")
+}
+
+/// The single designated central OneDrive connection. The MSAL cache is stored only as AES-256-GCM ciphertext.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model central_connection {
+  id                     BigInt                 @id @default(autoincrement())
+  provider_type_id       BigInt
+  owner_user_id          BigInt
+  account_issuer         String
+  account_subject        String
+  account_tenant_id      String?                @db.VarChar(100)
+  account_type           String                 @default("unknown") @db.VarChar(30)
+  home_account_id        String                 @db.VarChar(255)
+  account_email          String?                @db.VarChar(320)
+  account_display_name   String?                @db.VarChar(200)
+  external_drive_id      String
+  root_folder_item_id    String
+  root_folder_path       String                 @default("FileForge-Central")
+  users_folder_item_id   String
+  connection_status      String                 @default("unverified") @db.VarChar(30)
+  consented_scopes       String[]
+  token_cache_ciphertext Bytes
+  token_cache_nonce      Bytes
+  token_cache_auth_tag   Bytes
+  encryption_key_version Int                    @default(1) @db.SmallInt
+  cache_revision         BigInt                 @default(1)
+  cache_updated_at       DateTime               @default(now()) @db.Timestamptz(6)
+  last_auth_at           DateTime?              @db.Timestamptz(6)
+  last_verified_at       DateTime?              @db.Timestamptz(6)
+  last_error_code        String?                @db.VarChar(60)
+  last_error_at          DateTime?              @db.Timestamptz(6)
+  quota_total_bytes      BigInt?
+  quota_used_bytes       BigInt?
+  quota_remaining_bytes  BigInt?
+  quota_state            String?                @db.VarChar(20)
+  quota_checked_at       DateTime?              @db.Timestamptz(6)
+  created_at             DateTime               @default(now()) @db.Timestamptz(6)
+  created_by             BigInt?
+  updated_at             DateTime?              @db.Timestamptz(6)
+  updated_by             BigInt?
+  is_deleted             Boolean                @default(false)
+  deleted_at             DateTime?              @db.Timestamptz(6)
+  deleted_by             BigInt?
+  users                  users                  @relation(fields: [owner_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  storage_provider_types storage_provider_types @relation(fields: [provider_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  central_files          central_files[]
+
+  @@index([id], map: "ix_central_connection_active", where: raw("(is_deleted = false)"))
+  @@schema("storage")
+}
+
+/// Metadata of files in the central OneDrive. owner_user_id is the only basis for user access.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model central_files {
+  id                        BigInt             @id @default(autoincrement())
+  connection_id             BigInt
+  owner_user_id             BigInt
+  uploaded_by               BigInt
+  display_name              String
+  stored_name               String             @db.VarChar(100)
+  file_extension            String?            @db.VarChar(16)
+  mime_type                 String             @db.VarChar(255)
+  size_bytes                BigInt             @default(0)
+  checksum_sha256           String?            @db.VarChar(64)
+  content_version           Int                @default(1)
+  external_drive_id         String
+  external_item_id          String?
+  external_etag             String?
+  external_ctag             String?
+  external_created_at       DateTime?          @db.Timestamptz(6)
+  external_last_modified_at DateTime?          @db.Timestamptz(6)
+  upload_status             String             @default("pending") @db.VarChar(30)
+  uploaded_at               DateTime?          @db.Timestamptz(6)
+  last_error_code           String?            @db.VarChar(60)
+  created_at                DateTime           @default(now()) @db.Timestamptz(6)
+  created_by                BigInt?
+  updated_at                DateTime?          @db.Timestamptz(6)
+  updated_by                BigInt?
+  is_deleted                Boolean            @default(false)
+  deleted_at                DateTime?          @db.Timestamptz(6)
+  deleted_by                BigInt?
+  central_connection        central_connection @relation(fields: [connection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_central_files_owner_user_idTousers  users @relation("central_files_owner_user_idTousers", fields: [owner_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_central_files_uploaded_byTousers    users @relation("central_files_uploaded_byTousers", fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // Partial unique: use findFirst with is_deleted: false, never findUnique.
+  @@unique([external_drive_id, external_item_id], map: "uq_central_file_item", where: raw("((external_item_id IS NOT NULL) AND (is_deleted = false))"))
+  @@unique([owner_user_id, stored_name], map: "uq_central_file_stored_name")
+  @@index([id], map: "ix_central_files_active", where: raw("(is_deleted = false)"))
+  @@index([owner_user_id, created_at(sort: Desc)], map: "ix_central_files_owner", where: raw("(is_deleted = false)"))
+  @@index([created_at(sort: Desc)], map: "ix_central_files_created", where: raw("(is_deleted = false)"))
+  @@index([upload_status, updated_at], map: "ix_central_files_needs_attention", where: raw("(upload_status IN ('pending', 'uploading', 'replacing', 'deleting', 'failed'))"))
+  @@schema("storage")
+}
+
+/// Append-only audit trail (UPDATE/DELETE are rejected by a trigger). Written for administrator actions on other users' files.
+/// workspace_id / actor_user_id / entity_type_id are plain columns here: no relations, so no existing model changes.
+model events {
+  id             BigInt   @id @default(autoincrement())
+  workspace_id   BigInt?
+  actor_user_id  BigInt?
+  actor_type     String   @default("user") @db.VarChar(20)
+  action         String   @db.VarChar(80)
+  entity_type_id BigInt?
+  entity_id      BigInt?
+  old_values     Json?
+  new_values     Json?
+  request_id     String?
+  ip_address     String?  @db.Inet
+  occurred_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@schema("audit")
+}

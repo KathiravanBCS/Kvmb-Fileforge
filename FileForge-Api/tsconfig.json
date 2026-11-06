@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "rootDir": ".",
+    "outDir": "./dist",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "types": ["node", "jest", "multer"]
+  },
+  "include": ["src/**/*.ts", "generated/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,21 @@
+.sectionHeader {
+  padding-bottom: var(--mantine-spacing-md);
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg) 0;
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  @media (min-width: 48em) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: var(--mantine-spacing-xl);
+  }
+}

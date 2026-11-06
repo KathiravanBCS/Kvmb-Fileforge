@@ -1,0 +1,39 @@
+.card {
+  display: block;
+  text-align: left;
+}
+
+.preview {
+  position: relative;
+  padding: 4px;
+  border: 2px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: var(--mantine-radius-md);
+  transition: border-color 120ms ease;
+
+  @mixin hover {
+    border-color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-3));
+  }
+
+  &[data-selected] {
+    border-color: var(--mantine-primary-color-filled);
+  }
+
+  .card:focus-visible & {
+    outline: 2px solid var(--mantine-primary-color-filled);
+    outline-offset: 2px;
+  }
+}
+
+.check {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: var(--mantine-primary-color-filled);
+  color: var(--mantine-color-white);
+}

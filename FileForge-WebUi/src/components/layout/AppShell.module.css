@@ -1,0 +1,25 @@
+.skipLink {
+  position: absolute;
+  top: var(--mantine-spacing-xs);
+  left: var(--mantine-spacing-xs);
+  z-index: 1000;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+  border: 1px solid var(--mantine-color-default-border);
+  transform: translateY(-200%);
+
+  &:focus {
+    transform: translateY(0);
+  }
+}
+
+.main {
+  /* A soft tint behind the white page blocks, as in the reference design. */
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
+
+  &:focus {
+    outline: none;
+  }
+}
