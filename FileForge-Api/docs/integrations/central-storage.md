@@ -13,16 +13,16 @@ OneDrive/
     └── users/<database user id>/<random uuid>[.ext]
 ```
 
-The OneDrive item is named by a generated uuid. The user's file name lives only in PostgreSQL (`storage.central_files.display_name`),
+The OneDrive item is named by a generated uuid. The user's file name lives only in PostgreSQL (`central_files.display_name`),
 so a rename never touches OneDrive. The account owner can of course still open these files in OneDrive itself; FileForge only
 guarantees that **its own APIs** enforce ownership.
 
 ## Who is an administrator
 
-`core.system_admins` (a live row for the user, and the user active). Checked in PostgreSQL on every request and again before every
+`system_admins` (a live row for the user, and the user active). Checked in PostgreSQL on every request and again before every
 administrator write. Nothing in the API can create a grant; rows are inserted by reviewed SQL
-(`docs/database/sql/fileforge_seed_v1_2_grant_system_admin.sql`). Workspace roles (`owner`, `admin`, ...) are not administrator rights.
-To revoke: `UPDATE core.system_admins SET is_active = false WHERE user_id = <id>;` (effective on the next request).
+(`prisma/grant-system-admin.sql`). Workspace roles (`owner`, `admin`, ...) are not administrator rights.
+To revoke: `UPDATE system_admins SET is_active = false WHERE user_id = <id>;` (effective on the next request).
 
 ## Endpoints (`/api/v1`)
 
@@ -58,9 +58,9 @@ Upload limits answer **429** with a `Retry-After` header and `retryAfterSeconds`
 1. An administrator calls `POST /admin/central-storage/connection/connect`, and is sent to Microsoft for **Files.ReadWrite** consent
    (the same single redirect URI as sign-in; the flow is told apart by the server-side purpose `connect_central_storage`).
 2. On return the server re-checks everything: still an administrator, the consenting Microsoft account is exactly the account they
-   signed in with (issuer + subject, never e-mail) and is linked to that user in `core.user_identities`.
+   signed in with (issuer + subject, never e-mail) and is linked to that user in `user_identities`.
 3. It creates/adopts `FileForge-Central/` and `FileForge-Central/users/`, then stores the MSAL token cache **only as AES-256-GCM
-   ciphertext** in `storage.central_connection` (fresh random 12-byte nonce per write; the key version, row id and account subject are
+   ciphertext** in `central_connection` (fresh random 12-byte nonce per write; the key version, row id and account subject are
    authenticated data). A different Microsoft account can never replace the connection (checked in code and by a database trigger).
 4. Landing page: `/admin/storage/settings?central=connected`, or `?central_error=<code>` (`access_denied`, `consent_required`,
    `session_expired`, `account_mismatch`, `central_storage_forbidden`, `central_storage_unavailable`, `login_failed`).
@@ -93,7 +93,7 @@ Rows needing attention are covered by index `ix_central_files_needs_attention` (
 
 ## Upload limits (rate limiting and concurrency)
 
-Enforced by the server, in PostgreSQL (`storage.central_upload_slots`), so every backend instance sees the same numbers. Defaults (all configurable,
+Enforced by the server, in PostgreSQL (`central_upload_slots`), so every backend instance sees the same numbers. Defaults (all configurable,
 see "Production configuration"):
 
 | Limit | Default |
@@ -144,7 +144,7 @@ records `pending_size_bytes` / `pending_checksum_sha256` when it claims the file
   short jobs: slot admission and the slot housekeeping.)
 - **Retries:** transient failures are retried with a growing delay (2, 4, 8 ... minutes, at most 6 h); after `CENTRAL_RECOVERY_MAX_ATTEMPTS` the file goes to
   review. A lost OneDrive authorization is *waiting*, not a failed attempt (retried every 15 minutes).
-- **Audit:** every repair and every handover to an administrator is written to `audit.events` (`actor_type = 'system'`, or the administrator who pressed
+- **Audit:** every repair and every handover to an administrator is written to `events` (`actor_type = 'system'`, or the administrator who pressed
   "Retry now"); ids, statuses and codes only.
 - **Off by default.** `CENTRAL_RECOVERY_ENABLED=false` until you turn it on deliberately. The administrator page works either way.
 - **Administrator page** `/admin/storage/recovery`: counts, the three queues (*needs review*, *retrying*, *waiting*), a plain-language explanation of each file,
@@ -154,7 +154,7 @@ records `pending_size_bytes` / `pending_checksum_sha256` when it claims the file
 ## Sessions in production
 
 Development uses express-session's in-memory store. **Production refuses to start without `SESSION_STORE=postgres`**: sessions are kept in
-`core.sessions`, because they hold each user's Microsoft token cache.
+`sessions`, because they hold each user's Microsoft token cache.
 
 - AES-256-GCM, fresh random 12-byte nonce per write, key `SESSION_ENCRYPTION_KEY` — a **different** key from `CENTRAL_STORAGE_ENCRYPTION_KEY` (startup fails if they
   are equal), so one leaked key never opens both and they rotate independently.

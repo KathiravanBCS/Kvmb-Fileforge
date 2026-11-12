@@ -127,7 +127,7 @@ describe('UserProvisioningService', () => {
       expect(tx.workspaces.create).not.toHaveBeenCalled();
     });
 
-    it('needs an email address, because core.users.email is NOT NULL', async () => {
+    it('needs an email address, because users.email is NOT NULL', async () => {
       const { prisma, service } = createPrisma();
       await expect(service.resolveOrProvision(identity({ email: null }))).rejects.toMatchObject({
         reason: 'email_unavailable',

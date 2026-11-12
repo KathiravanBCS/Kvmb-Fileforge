@@ -14,7 +14,7 @@ export interface WorkspaceSummary {
 export interface WorkspaceMembership {
   /** BIGINT as a decimal string. */
   workspaceId: string;
-  /** Role code from core.roles, resolved per workspace. There is no global role. */
+  /** Role code from roles, resolved per workspace. There is no global role. */
   roleCode: string;
 }
 

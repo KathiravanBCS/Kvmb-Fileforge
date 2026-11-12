@@ -68,7 +68,7 @@ export const envSchema = z
     DATABASE_CONNECTION_LIMIT: z.coerce.number().int().min(2).max(500).default(40),
 
     // ---- Sessions -----------------------------------------------------------------------------------------------------
-    // `memory` is for local development only. `postgres` keeps sessions in core.sessions as AES-256-GCM ciphertext (they hold users'
+    // `memory` is for local development only. `postgres` keeps sessions in sessions as AES-256-GCM ciphertext (they hold users'
     // Microsoft token caches). Production refuses to start with `memory`.
     SESSION_STORE: z.enum(['memory', 'postgres']).default('memory'),
     // MUST be a different key from CENTRAL_STORAGE_ENCRYPTION_KEY: independent rotation, and one leaked key never opens both.
@@ -103,6 +103,10 @@ export const envSchema = z
     CENTRAL_RECOVERY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(6),
     // How long one worker owns one file while repairing it (renewed during the work; expires if the worker dies).
     CENTRAL_RECOVERY_LEASE_MINUTES: z.coerce.number().int().min(1).max(60).default(5),
+
+    // Business card scanning (Groq vision). Optional: without a key the API starts normally and scanning answers 503.
+    GROQ_API_KEY: z.string().trim().min(1).optional(),
+    GROQ_MODEL: z.string().trim().min(1).default('qwen/qwen3.8-27b'),
   })
   .superRefine((env, ctx) => {
     const problem = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });

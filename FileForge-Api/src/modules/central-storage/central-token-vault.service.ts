@@ -152,7 +152,7 @@ export class CentralTokenVault {
       if (!provider) throw new Error('storage provider type "onedrive" is missing');
       // The row id is part of the encryption context, so it is reserved before the cache is encrypted.
       const [reserved] = await tx.$queryRaw<{ id: bigint }[]>`
-        SELECT nextval(pg_get_serial_sequence('storage.central_connection', 'id')) AS id`;
+        SELECT nextval(pg_get_serial_sequence('public.central_connection', 'id')) AS id`;
       if (!reserved) throw new Error('could not reserve a connection id');
       await tx.central_connection.create({
         data: {

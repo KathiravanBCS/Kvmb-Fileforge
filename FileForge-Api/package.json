@@ -65,7 +65,10 @@
     "test": "jest",
     "pretest": "prisma generate",
     "db:validate": "prisma validate",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status"
   },
   "jest": {
     "moduleFileExtensions": [

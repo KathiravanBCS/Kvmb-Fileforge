@@ -11,7 +11,7 @@ export interface RequestMeta {
 
 /**
  * Who may do what in central storage. The ONLY place that builds an Actor, and the only place that decides administrator
- * status: from core.system_admins in PostgreSQL, on every request. Never from the session, a header, a role claim, the
+ * status: from system_admins in PostgreSQL, on every request. Never from the session, a header, a role claim, the
  * frontend, or workspace ownership (every user owns their personal workspace; that makes nobody a system administrator).
  */
 @Injectable()

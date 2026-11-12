@@ -1,14 +1,14 @@
 # File Manager and OneDrive (Phase 1E)
 
 Server-side Microsoft Graph access to the user's OneDrive, behind the existing session, CSRF and workspace/role checks.
-File **contents** live in OneDrive; only **metadata** goes to PostgreSQL (`storage.files`). Microsoft tokens never leave the server.
+File **contents** live in OneDrive; only **metadata** goes to PostgreSQL (`files`). Microsoft tokens never leave the server.
 
 ## What is in OneDrive, and what the app can touch
 
 Everything is rooted in one folder, **`FileForge`**, at the top of the user's OneDrive. Nothing outside it is read, listed or changed.
 
 - The browser **never** sends or receives OneDrive ids. It sends a **path relative to the FileForge folder** (`invoices/2026/a.pdf`).
-- The drive id and root-folder item id come from the stored connection (`storage.connections.external_drive_id`, `root_folder_item_id`), never from the request.
+- The drive id and root-folder item id come from the stored connection (`connections.external_drive_id`, `root_folder_item_id`), never from the request.
 - Every path is validated (`onedrive-paths.ts`): no `.`/`..`, no absolute or empty segments, no backslashes, none of OneDrive's forbidden characters, no control or
   bidirectional-override characters, no reserved names (`CON`, `AUX`, `~$…`, `desktop.ini`, `_vti_`…), max 255 per name, 400 total, depth 10. Segments are percent-encoded.
 - Every item that is acted on must be in the connection's drive and must not be a shortcut (`remoteItem`); otherwise `403 ITEM_OUTSIDE_STORAGE_ROOT`. Shortcuts, notebooks and other-drive items are not listed.
@@ -58,7 +58,7 @@ Also `GET /api/v1/workspaces` (the caller's workspaces and roles; used to find t
 
 Size 1 byte to 4 MB (`MAX_UPLOAD_BYTES`; a deliberate app cap because uploads are buffered in memory, not Graph's limit). Names follow the path rules above. Blocked extensions (by the **final** extension, so `a.pdf.exe` is caught): `exe com bat cmd msi msp scr pif cpl dll sys lnk reg hta ps1 psm1 vbs vbe js jse wsf wsh jar sh apk`. The same rules are applied for rename targets. The frontend mirrors them for early feedback; the server is authoritative.
 
-## Metadata (`storage.files`) and consistency
+## Metadata (`files`) and consistency
 
 OneDrive is the source of truth; every Graph/DB pair has a fixed order and a compensating step:
 
@@ -70,7 +70,7 @@ OneDrive is the source of truth; every Graph/DB pair has a fixed order and a com
 
 Rows are matched by `(workspace_id, connection_id, external_object_id)` with `is_deleted = false`, so a lookup can never cross workspaces or connections. A row is created or updated, never duplicated. Soft-delete sets `is_deleted`, `deleted_at`, `deleted_by`, `upload_status='deleted'` together (the table's CHECK requires `deleted_at` whenever `is_deleted`). `checksum_sha256` is computed from the uploaded bytes.
 
-`storage.connections`: `auth_mode='delegated'`, `connection_status`, `external_drive_id`, `root_folder_item_id`, `root_folder_path='FileForge'`, `consented_scopes` (as returned by Microsoft, including the OpenID scopes), `last_auth_at`, `last_verified_at`. **`secret_reference` stays NULL and `config` is `{}`**: no token is stored in PostgreSQL. `storage.folder_mappings`: one row per module folder; `relative_path` is relative to the FileForge folder (the form the API accepts).
+`connections`: `auth_mode='delegated'`, `connection_status`, `external_drive_id`, `root_folder_item_id`, `root_folder_path='FileForge'`, `consented_scopes` (as returned by Microsoft, including the OpenID scopes), `last_auth_at`, `last_verified_at`. **`secret_reference` stays NULL and `config` is `{}`**: no token is stored in PostgreSQL. `folder_mappings`: one row per module folder; `relative_path` is relative to the FileForge folder (the form the API accepts).
 
 | Folder | `module_code` |
 |---|---|
@@ -106,12 +106,12 @@ Other codes: `INVALID_PATH`, `FILE_TYPE_NOT_ALLOWED`, `FILE_TOO_LARGE`, `EMPTY_F
 - Uploads are limited to 4 MB; there are no upload sessions, resumable uploads or folder creation yet.
 - Downloads are fully buffered in the browser (blob), which suits small and medium files.
 - A single page of at most 1000 items per folder; no server-side pagination.
-- Metadata is written for files changed **through FileForge**. Files added or changed directly in OneDrive appear in listings (live from Graph) but have no `storage.files` row until they are renamed or otherwise touched through the app; there is no reconciliation job.
-- Role checks use role *codes*; `core.permissions` is empty.
+- Metadata is written for files changed **through FileForge**. Files added or changed directly in OneDrive appear in listings (live from Graph) but have no `files` row until they are renamed or otherwise touched through the app; there is no reconciliation job.
+- Role checks use role *codes*; `permissions` is empty.
 - Graph calls are not yet rate-limited by the app.
 
 ## Manual verification with a real account
 
 The Connect step has been completed once against real Microsoft and the real database. Not yet exercised against real OneDrive: listing, upload, download, rename, delete. To do so:
 restart the API and sign in again (the status should be `connected` without clicking Connect) → **File Manager** → browse the 8 folders → upload a small file into `invoices` → download it → rename it → delete it → check the recycle bin in OneDrive.
-Read-only checks on the database afterwards: one `storage.files` row per uploaded file (soft-deleted after the delete), and still no token-like text in `storage.connections`.
+Read-only checks on the database afterwards: one `files` row per uploaded file (soft-deleted after the delete), and still no token-like text in `connections`.

@@ -18,6 +18,8 @@ import {
   type AdminFilesQuery,
   type CentralFilesQuery,
 } from '@/features/central-storage/types';
+import { businessCardPageSchema, businessCardSchema, type BusinessCardsQuery, type CardPatch } from '@/features/business-cards/types';
+import { contactPageSchema, contactSchema, type ContactsQuery, type ContactUpdate } from '@/features/contacts/types';
 import {
   connectUrlSchema,
   oneDriveItemSchema,
@@ -127,6 +129,83 @@ export const api = {
   workspaces: {
     list: async (options?: RequestOptions) =>
       parse(z.array(workspaceSchema), await apiClient.get<unknown>(API_ENDPOINTS.workspaces.list, options), 'the workspaces'),
+  },
+
+  /** Scan business cards, review what was read, and approve it into the contacts. */
+  businessCards: {
+    list: async (workspaceId: string, query: BusinessCardsQuery, options?: RequestOptions) =>
+      parse(
+        businessCardPageSchema,
+        await apiClient.get<unknown>(API_ENDPOINTS.businessCards.list(workspaceId), {
+          ...options,
+          params: { page: query.page, pageSize: query.pageSize, status: query.status },
+        }),
+        'the business cards',
+      ),
+
+    get: async (workspaceId: string, id: string, options?: RequestOptions) =>
+      parse(businessCardSchema, await apiClient.get<unknown>(API_ENDPOINTS.businessCards.card(workspaceId, id), options), 'the business card'),
+
+    /**
+     * Uploads the photos of ONE card: the front, and the back when there is one. The API reads both together, stores them in
+     * central storage and returns a PENDING scan.
+     */
+    scan: async (workspaceId: string, photos: { front: File; back?: File }, options?: UploadOptions) => {
+      const form = new FormData();
+      form.append('front', photos.front, photos.front.name);
+      if (photos.back) form.append('back', photos.back, photos.back.name);
+      return parse(
+        businessCardSchema,
+        await apiClient.upload<unknown>(API_ENDPOINTS.businessCards.scan(workspaceId), form, options),
+        'the scan',
+      );
+    },
+
+    update: async (workspaceId: string, id: string, patch: CardPatch, options?: RequestOptions) =>
+      parse(
+        businessCardSchema,
+        await apiClient.patch<unknown>(API_ENDPOINTS.businessCards.card(workspaceId, id), patch, options),
+        'the correction',
+      ),
+
+    approve: async (workspaceId: string, id: string, options?: RequestOptions) =>
+      parse(
+        businessCardSchema,
+        await apiClient.post<unknown>(API_ENDPOINTS.businessCards.approve(workspaceId, id), undefined, options),
+        'the approval',
+      ),
+
+    reject: async (workspaceId: string, id: string, options?: RequestOptions) =>
+      parse(
+        businessCardSchema,
+        await apiClient.post<unknown>(API_ENDPOINTS.businessCards.reject(workspaceId, id), undefined, options),
+        'the rejection',
+      ),
+
+    /** One side's photo bytes (private: served through the API from central storage). */
+    image: (workspaceId: string, id: string, side: 'front' | 'back', options?: RequestOptions) =>
+      apiClient.download(API_ENDPOINTS.businessCards.image(workspaceId, id), { ...options, params: { side } }),
+  },
+
+  contacts: {
+    list: async (workspaceId: string, query: ContactsQuery, options?: RequestOptions) =>
+      parse(
+        contactPageSchema,
+        await apiClient.get<unknown>(API_ENDPOINTS.contacts.list(workspaceId), {
+          ...options,
+          params: { page: query.page, pageSize: query.pageSize, q: query.q || undefined, reviewStatus: query.reviewStatus },
+        }),
+        'the contacts',
+      ),
+
+    get: async (workspaceId: string, id: string, options?: RequestOptions) =>
+      parse(contactSchema, await apiClient.get<unknown>(API_ENDPOINTS.contacts.contact(workspaceId, id), options), 'the contact'),
+
+    update: async (workspaceId: string, id: string, patch: ContactUpdate, options?: RequestOptions) =>
+      parse(contactSchema, await apiClient.patch<unknown>(API_ENDPOINTS.contacts.contact(workspaceId, id), patch, options), 'the contact'),
+
+    remove: (workspaceId: string, id: string, options?: RequestOptions) =>
+      apiClient.delete<void>(API_ENDPOINTS.contacts.contact(workspaceId, id), options),
   },
 
   centralStorage: {

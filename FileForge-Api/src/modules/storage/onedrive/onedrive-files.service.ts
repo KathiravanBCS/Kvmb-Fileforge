@@ -55,7 +55,7 @@ const LIST_SELECT = '$select=id,name,size,file,folder,lastModifiedDateTime,paren
  * Containment: the browser only ever supplies a path RELATIVE to the FileForge root. The drive id and root item id come
  * from the stored connection, every path segment is validated, and every item that is acted on must be in that drive.
  *
- * Consistency between OneDrive (contents, source of truth) and PostgreSQL (storage.files metadata):
+ * Consistency between OneDrive (contents, source of truth) and PostgreSQL (files metadata):
  *  - upload:  OneDrive first, then metadata; if metadata fails the new file is removed again (it was created by this request).
  *  - rename:  OneDrive first, then metadata; if metadata fails the rename is reverted.
  *  - delete:  metadata soft-delete first (reversible), then OneDrive; if OneDrive fails the soft-delete is undone.
@@ -399,7 +399,7 @@ export class OneDriveFilesService {
     });
   }
 
-  /** Creates or updates the storage.files row for an item (matched by connection + OneDrive item id). */
+  /** Creates or updates the files row for an item (matched by connection + OneDrive item id). */
   private async recordFile(
     ctx: StorageRequestContext,
     connection: UsableConnection,

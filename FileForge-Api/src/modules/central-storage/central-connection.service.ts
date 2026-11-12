@@ -34,7 +34,7 @@ export interface CentralConnectionStatus {
  *
  * Authorization is checked at both ends: the route requires a system administrator, and completing the redirect checks
  * AGAIN (the browser took a detour through Microsoft). The connected Microsoft account must be exactly the account the
- * administrator signed in with (issuer + subject, never e-mail) AND an identity linked to that user in core.user_identities;
+ * administrator signed in with (issuer + subject, never e-mail) AND an identity linked to that user in user_identities;
  * a different account can neither create the connection nor replace an existing one (also enforced by a database trigger).
  * The tokens never enter the browser's session: they go straight into the encrypted vault.
  */

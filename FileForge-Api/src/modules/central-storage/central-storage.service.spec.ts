@@ -253,7 +253,7 @@ describe('ownership isolation: a normal user can only ever reach their own files
     expect(await code(service.usageByUser(actors.alice))).toBe('FILE_NOT_FOUND');
   });
 
-  it('an actor that CLAIMS to be an administrator but is not in core.system_admins cannot write anything', async () => {
+  it('an actor that CLAIMS to be an administrator but is not in system_admins cannot write anything', async () => {
     const ctx = await setup();
     const row = ctx.seedFile(USER.bob, 'bob.pdf');
     const forged: Actor = { userId: USER.alice, isAdmin: true };

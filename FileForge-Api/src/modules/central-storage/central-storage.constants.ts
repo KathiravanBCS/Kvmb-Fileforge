@@ -32,7 +32,7 @@ export const GRAPH_MAX_ATTEMPTS = 3;
 export const GRAPH_RETRY_BASE_MS = 400;
 export const GRAPH_RETRY_MAX_WAIT_MS = 10_000;
 
-/** Lifecycle values of storage.central_files.upload_status. */
+/** Lifecycle values of central_files.upload_status. */
 export const FILE_STATUS = {
   pending: 'pending',
   uploading: 'uploading',
@@ -46,7 +46,7 @@ export const FILE_STATUS = {
 /** A file can be listed, downloaded and previewed in these states (during a replace the old content is still intact). */
 export const READABLE_STATUSES: string[] = [FILE_STATUS.ready, FILE_STATUS.replacing];
 
-/** Entity-type codes (master.entity_types) used by audit.events. */
+/** Entity-type codes (master.entity_types) used by events. */
 export const ENTITY_CENTRAL_FILE = 'central_file';
 export const ENTITY_CENTRAL_CONNECTION = 'central_storage_connection';
 

@@ -28,7 +28,7 @@ const contextFor = (user: ReturnType<typeof sessionUser> | undefined) =>
   ({ switchToHttp: () => ({ getRequest: () => ({ session: user ? { user } : {} }) }) }) as unknown as ExecutionContext;
 
 describe('who is a system administrator', () => {
-  it('only a live grant in core.system_admins makes someone an administrator', async () => {
+  it('only a live grant in system_admins makes someone an administrator', async () => {
     const { access } = setup();
     expect(await access.isSystemAdmin(USER.admin)).toBe(true);
     expect(await access.isSystemAdmin(USER.alice)).toBe(false);

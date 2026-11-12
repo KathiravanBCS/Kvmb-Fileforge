@@ -11,7 +11,7 @@ import { seal, SealedDataError, unseal } from '../utils/aes-gcm.util';
 import { EncryptedPgSessionStore, hashSessionId } from './encrypted-session.store';
 import type { SessionRepository, SessionWrite, StoredSession } from './session.repository';
 
-/** In-memory stand-in for core.sessions with the same contract (earlier expiry wins, expired rows are invisible). */
+/** In-memory stand-in for sessions with the same contract (earlier expiry wins, expired rows are invisible). */
 class MemoryRepository implements SessionRepository {
   readonly rows = new Map<string, SessionWrite>();
   now = () => Date.now();
@@ -144,7 +144,7 @@ describe('EncryptedPgSessionStore', () => {
 
   it('records no user id for a visitor and ignores a non-numeric one', async () => {
     await set(store, 'sid-anon', sessionData({ oauth: { state: 'x' } }));
-    await set(store, 'sid-odd', sessionData({ user: { id: '1; DROP TABLE core.users' } }));
+    await set(store, 'sid-odd', sessionData({ user: { id: '1; DROP TABLE users' } }));
     expect([...repository.rows.values()].map((r) => r.userId)).toEqual([null, null]);
   });
 
