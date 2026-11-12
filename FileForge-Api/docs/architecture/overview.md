@@ -1,6 +1,6 @@
 # FileForge API: architecture
 
-NestJS 11 (Express), TypeScript strict, Prisma 7 (query client only), PostgreSQL, Microsoft Entra ID / Graph. Modelled on the `vstn-campaign` project's
+NestJS 11 (Express), TypeScript strict, Prisma 7 (client and Migrate: owns the schema), PostgreSQL, Microsoft Entra ID / Graph. Modelled on the `vstn-campaign` project's
 layout and conventions (config via `@nestjs/config`, `nestjs-pino`, `PrismaService` with `pg` + `PrismaPg`, BigInt interceptor, Jest, Prettier/ESLint).
 
 ## Layout

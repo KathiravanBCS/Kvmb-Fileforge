@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
-/** What is stored in storage.central_connection: ciphertext, a fresh random nonce, and the GCM authentication tag. */
+/** What is stored in central_connection: ciphertext, a fresh random nonce, and the GCM authentication tag. */
 export interface EncryptedCache {
   ciphertext: Buffer;
   nonce: Buffer;

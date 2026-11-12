@@ -3,6 +3,8 @@
 
 const enc = encodeURIComponent;
 const oneDrive = (workspaceId: string) => `/workspaces/${enc(workspaceId)}/storage/onedrive`;
+const businessCards = (workspaceId: string) => `/workspaces/${enc(workspaceId)}/business-cards`;
+const contacts = (workspaceId: string) => `/workspaces/${enc(workspaceId)}/contacts`;
 
 /** The file routes shared by `/central-storage` (own files) and `/admin/central-storage` (every user's files). */
 const centralFiles = (base: string) => ({
@@ -55,6 +57,22 @@ export const API_ENDPOINTS = {
         dismiss: (id: string) => `/admin/central-storage/recovery/items/${enc(id)}/dismiss`,
       },
     },
+  },
+
+  /** Scanned business cards of a workspace (a user only ever sees their own). The photo is kept in central storage. */
+  businessCards: {
+    list: (workspaceId: string) => businessCards(workspaceId),
+    scan: (workspaceId: string) => `${businessCards(workspaceId)}/scan`,
+    card: (workspaceId: string, id: string) => `${businessCards(workspaceId)}/${enc(id)}`,
+    image: (workspaceId: string, id: string) => `${businessCards(workspaceId)}/${enc(id)}/image`,
+    approve: (workspaceId: string, id: string) => `${businessCards(workspaceId)}/${enc(id)}/approve`,
+    reject: (workspaceId: string, id: string) => `${businessCards(workspaceId)}/${enc(id)}/reject`,
+  },
+
+  /** The centralized contacts of a workspace: the contacts of every module in one place. */
+  contacts: {
+    list: (workspaceId: string) => contacts(workspaceId),
+    contact: (workspaceId: string, id: string) => `${contacts(workspaceId)}/${enc(id)}`,
   },
 
   storage: {

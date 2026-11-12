@@ -47,7 +47,7 @@ type ConnectionRow = NonNullable<Awaited<ReturnType<OneDriveConnectionService['f
 const FOLDER_SCOPES = { scopes: [FILES_SCOPE] };
 
 /**
- * A user's OneDrive connection to a workspace (storage.connections + storage.folder_mappings).
+ * A user's OneDrive connection to a workspace (connections + folder_mappings).
  *
  * The connection row stores NO tokens: Microsoft tokens live only in the owner's server-side session, and
  * `secret_reference` stays NULL. A connection can therefore only be used by its owner, in a session of theirs

@@ -1,8 +1,13 @@
-// INTROSPECTED from the live fileforge_db with `prisma db pull --print` (read-only), 2026-11-04.
-// Schemas included: core, storage, master, audit. Source of truth is docs/database/sql/ (v1.1 schema + v1.2 central storage migration);
-// the other schemas (contact, processing, scanner, ...) are added when a phase needs them.
+// SOURCE OF TRUTH for the FileForge database. Prisma Migrate owns the schema: change this file, then run
+// `npm run db:migrate:dev -- --name <what_changed>` (local) and `npm run db:migrate:deploy` (shared/production).
 //
-// Never run `prisma migrate` or `prisma db push` against fileforge_db: the SQL file owns the schema.
+// Exactly two PostgreSQL schemas:
+//   public  every application table (identity, workspaces, storage, central storage, sessions, audit events)
+//   master  lookup / reference tables (types, statuses)
+//
+// Prisma cannot express CHECK constraints, triggers, expression indexes or seed rows. They live as hand-written SQL in the
+// migration files under prisma/migrations (see 20261111000000_init). Never run `prisma db push`: it would not apply them.
+// When a migration is generated, read it: Prisma must never drop a trigger, CHECK or the uq_users_email_lower index.
 //
 // CAUTION when using this client:
 //   - Partial unique indexes (WHERE NOT is_deleted / WHERE is_default ...) appear as @unique / @@unique with
@@ -22,7 +27,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["core", "master", "storage", "audit"]
+  schemas  = ["public", "master"]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -40,7 +45,7 @@ model permissions {
   role_permissions role_permissions[]
 
   @@index([id], map: "ix_permissions_active", where: raw("(is_deleted = false)"))
-  @@schema("core")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -60,7 +65,7 @@ model role_permissions {
 
   @@unique([role_id, permission_id], map: "uq_role_permission")
   @@index([id], map: "ix_role_permissions_active", where: raw("(is_deleted = false)"))
-  @@schema("core")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -82,7 +87,7 @@ model roles {
   workspace_members     workspace_members[]
 
   @@index([id], map: "ix_roles_active", where: raw("(is_deleted = false)"))
-  @@schema("core")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -109,7 +114,7 @@ model user_identities {
 
   @@unique([provider, issuer, subject], map: "uq_user_identity_issuer_subject")
   @@index([user_id], map: "ix_user_identities_user", where: raw("(NOT is_deleted)"))
-  @@schema("core")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -137,17 +142,19 @@ model users {
   workspaces                                            workspaces[]
   connections                                           connections[]
   files                                                 files[]
-  system_admins_system_admins_user_idTousers      system_admins[] @relation("system_admins_user_idTousers")
-  system_admins_system_admins_granted_byTousers   system_admins[] @relation("system_admins_granted_byTousers")
-  central_connection                              central_connection[]
-  central_files_central_files_owner_user_idTousers central_files[] @relation("central_files_owner_user_idTousers")
-  central_files_central_files_uploaded_byTousers   central_files[] @relation("central_files_uploaded_byTousers")
-  central_upload_slots                            central_upload_slots[]
-  sessions                                        sessions[]
+  system_admins_system_admins_user_idTousers            system_admins[]         @relation("system_admins_user_idTousers")
+  system_admins_system_admins_granted_byTousers         system_admins[]         @relation("system_admins_granted_byTousers")
+  central_connection                                    central_connection[]
+  central_files_central_files_owner_user_idTousers      central_files[]         @relation("central_files_owner_user_idTousers")
+  central_files_central_files_uploaded_byTousers        central_files[]         @relation("central_files_uploaded_byTousers")
+  central_upload_slots                                  central_upload_slots[]
+  sessions                                              sessions[]
+  events                                                events[]
+  business_card_scans                                   business_card_scans[]
 
   @@unique([auth_provider, external_subject], map: "uq_users_provider_subject")
   @@index([id], map: "ix_users_active", where: raw("(is_deleted = false)"))
-  @@schema("core")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -173,7 +180,7 @@ model workspace_invitations {
 
   @@index([id], map: "ix_workspace_invitations_active", where: raw("(is_deleted = false)"))
   @@index([workspace_id], map: "ix_workspace_invitations_workspace")
-  @@schema("core")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -200,7 +207,7 @@ model workspace_members {
   @@unique([workspace_id, user_id], map: "uq_workspace_member")
   @@index([id], map: "ix_workspace_members_active", where: raw("(is_deleted = false)"))
   @@index([workspace_id], map: "ix_workspace_members_workspace")
-  @@schema("core")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -221,7 +228,7 @@ model workspace_settings {
   @@unique([workspace_id, setting_key], map: "uq_workspace_setting")
   @@index([id], map: "ix_workspace_settings_active", where: raw("(is_deleted = false)"))
   @@index([workspace_id], map: "ix_workspace_settings_workspace")
-  @@schema("core")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -248,23 +255,30 @@ model workspaces {
   files                 files[]
   folder_mappings       folder_mappings[]
   operations            operations[]
+  events                events[]
+  contacts              contacts[]
+  contact_methods       contact_methods[]
+  contact_addresses     contact_addresses[]
+  contact_entity_links  contact_entity_links[]
+  business_card_scans   business_card_scans[]
 
   @@index([id], map: "ix_workspaces_active", where: raw("(is_deleted = false)"))
-  @@schema("core")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model contact_source_types {
-  id         BigInt    @id @default(autoincrement())
-  code       String    @unique @db.VarChar(50)
-  label      String    @db.VarChar(100)
-  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  id         BigInt     @id @default(autoincrement())
+  code       String     @unique @db.VarChar(50)
+  label      String     @db.VarChar(100)
+  created_at DateTime   @default(now()) @db.Timestamptz(6)
   created_by BigInt?
-  updated_at DateTime? @db.Timestamptz(6)
+  updated_at DateTime?  @db.Timestamptz(6)
   updated_by BigInt?
-  is_deleted Boolean   @default(false)
-  deleted_at DateTime? @db.Timestamptz(6)
+  is_deleted Boolean    @default(false)
+  deleted_at DateTime?  @db.Timestamptz(6)
   deleted_by BigInt?
+  contacts   contacts[]
 
   @@index([id], map: "ix_contact_source_types_active", where: raw("(is_deleted = false)"))
   @@schema("master")
@@ -289,18 +303,20 @@ model email_event_types {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model entity_types {
-  id          BigInt       @id @default(autoincrement())
-  code        String       @unique @db.VarChar(80)
-  name        String       @db.VarChar(160)
-  description String?
-  created_at  DateTime     @default(now()) @db.Timestamptz(6)
-  created_by  BigInt?
-  updated_at  DateTime?    @db.Timestamptz(6)
-  updated_by  BigInt?
-  is_deleted  Boolean      @default(false)
-  deleted_at  DateTime?    @db.Timestamptz(6)
-  deleted_by  BigInt?
-  file_links  file_links[]
+  id                   BigInt                 @id @default(autoincrement())
+  code                 String                 @unique @db.VarChar(80)
+  name                 String                 @db.VarChar(160)
+  description          String?
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  created_by           BigInt?
+  updated_at           DateTime?              @db.Timestamptz(6)
+  updated_by           BigInt?
+  is_deleted           Boolean                @default(false)
+  deleted_at           DateTime?              @db.Timestamptz(6)
+  deleted_by           BigInt?
+  file_links           file_links[]
+  events               events[]
+  contact_entity_links contact_entity_links[]
 
   @@index([id], map: "ix_entity_types_active", where: raw("(is_deleted = false)"))
   @@schema("master")
@@ -326,18 +342,18 @@ model job_statuses {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model storage_provider_types {
-  id          BigInt        @id @default(autoincrement())
-  code        String        @unique @db.VarChar(40)
-  name        String        @db.VarChar(100)
-  is_active   Boolean       @default(true)
-  created_at  DateTime      @default(now()) @db.Timestamptz(6)
-  created_by  BigInt?
-  updated_at  DateTime?     @db.Timestamptz(6)
-  updated_by  BigInt?
-  is_deleted  Boolean       @default(false)
-  deleted_at  DateTime?     @db.Timestamptz(6)
-  deleted_by  BigInt?
-  connections connections[]
+  id                 BigInt               @id @default(autoincrement())
+  code               String               @unique @db.VarChar(40)
+  name               String               @db.VarChar(100)
+  is_active          Boolean              @default(true)
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  created_by         BigInt?
+  updated_at         DateTime?            @db.Timestamptz(6)
+  updated_by         BigInt?
+  is_deleted         Boolean              @default(false)
+  deleted_at         DateTime?            @db.Timestamptz(6)
+  deleted_by         BigInt?
+  connections        connections[]
   central_connection central_connection[]
 
   @@index([id], map: "ix_storage_provider_types_active", where: raw("(is_deleted = false)"))
@@ -401,7 +417,7 @@ model connections {
   @@index([id], map: "ix_connections_active", where: raw("(is_deleted = false)"))
   @@index([workspace_id], map: "ix_connections_workspace")
   @@index([owner_user_id], map: "ix_storage_connections_owner", where: raw("(NOT is_deleted)"))
-  @@schema("storage")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -426,7 +442,7 @@ model file_links {
   @@unique([workspace_id, file_id, entity_type_id, entity_id], map: "uq_file_link")
   @@index([id], map: "ix_file_links_active", where: raw("(is_deleted = false)"))
   @@index([workspace_id], map: "ix_file_links_workspace")
-  @@schema("storage")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -448,7 +464,7 @@ model file_versions {
 
   @@unique([file_id, version_number], map: "uq_file_version")
   @@index([id], map: "ix_file_versions_active", where: raw("(is_deleted = false)"))
-  @@schema("storage")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -490,7 +506,7 @@ model files {
   @@unique([id, workspace_id], map: "uq_file_id_workspace")
   @@index([id], map: "ix_files_active", where: raw("(is_deleted = false)"))
   @@index([workspace_id], map: "ix_files_workspace")
-  @@schema("storage")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -515,7 +531,7 @@ model folder_mappings {
 
   @@unique([connection_id, module_code], map: "uq_folder_mapping_active", where: raw("(NOT is_deleted)"))
   @@index([workspace_id], map: "ix_folder_mapping_workspace", where: raw("(NOT is_deleted)"))
-  @@schema("storage")
+  @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -542,34 +558,32 @@ model operations {
 
   @@index([id], map: "ix_operations_active", where: raw("(is_deleted = false)"))
   @@index([workspace_id], map: "ix_operations_workspace")
-  @@schema("storage")
+  @@schema("public")
 }
-
-
 
 /// Global administrators. READ-ONLY for the application: rows are created only by reviewed SQL.
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model system_admins {
-  id         BigInt    @id @default(autoincrement())
-  user_id    BigInt
-  is_active  Boolean   @default(true)
-  granted_by BigInt?
-  granted_at DateTime  @default(now()) @db.Timestamptz(6)
-  note       String?   @db.VarChar(300)
-  created_at DateTime  @default(now()) @db.Timestamptz(6)
-  created_by BigInt?
-  updated_at DateTime? @db.Timestamptz(6)
-  updated_by BigInt?
-  is_deleted Boolean   @default(false)
-  deleted_at DateTime? @db.Timestamptz(6)
-  deleted_by BigInt?
-  users_system_admins_user_idTousers    users  @relation("system_admins_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users_system_admins_granted_byTousers users? @relation("system_admins_granted_byTousers", fields: [granted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                                    BigInt    @id @default(autoincrement())
+  user_id                               BigInt
+  is_active                             Boolean   @default(true)
+  granted_by                            BigInt?
+  granted_at                            DateTime  @default(now()) @db.Timestamptz(6)
+  note                                  String?   @db.VarChar(300)
+  created_at                            DateTime  @default(now()) @db.Timestamptz(6)
+  created_by                            BigInt?
+  updated_at                            DateTime? @db.Timestamptz(6)
+  updated_by                            BigInt?
+  is_deleted                            Boolean   @default(false)
+  deleted_at                            DateTime? @db.Timestamptz(6)
+  deleted_by                            BigInt?
+  users_system_admins_user_idTousers    users     @relation("system_admins_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_system_admins_granted_byTousers users?    @relation("system_admins_granted_byTousers", fields: [granted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   // Partial unique: use findFirst with is_deleted: false, never findUnique.
   @@unique([user_id], map: "uq_system_admins_user", where: raw("(is_deleted = false)"))
   @@index([id], map: "ix_system_admins_active", where: raw("(is_deleted = false)"))
-  @@schema("core")
+  @@schema("public")
 }
 
 /// The single designated central OneDrive connection. The MSAL cache is stored only as AES-256-GCM ciphertext.
@@ -590,7 +604,7 @@ model central_connection {
   root_folder_path       String                 @default("FileForge-Central")
   users_folder_item_id   String
   connection_status      String                 @default("unverified") @db.VarChar(30)
-  consented_scopes       String[]
+  consented_scopes       String[]               @default([])
   token_cache_ciphertext Bytes
   token_cache_nonce      Bytes
   token_cache_auth_tag   Bytes
@@ -618,52 +632,54 @@ model central_connection {
   central_files          central_files[]
 
   @@index([id], map: "ix_central_connection_active", where: raw("(is_deleted = false)"))
-  @@schema("storage")
+  @@schema("public")
 }
 
 /// Metadata of files in the central OneDrive. owner_user_id is the only basis for user access.
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model central_files {
-  id                        BigInt             @id @default(autoincrement())
-  connection_id             BigInt
-  owner_user_id             BigInt
-  uploaded_by               BigInt
-  display_name              String
-  stored_name               String             @db.VarChar(100)
-  file_extension            String?            @db.VarChar(16)
-  mime_type                 String             @db.VarChar(255)
-  size_bytes                BigInt             @default(0)
-  checksum_sha256           String?            @db.VarChar(64)
-  content_version           Int                @default(1)
-  external_drive_id         String
-  external_item_id          String?
-  external_etag             String?
-  external_ctag             String?
-  external_created_at       DateTime?          @db.Timestamptz(6)
-  external_last_modified_at DateTime?          @db.Timestamptz(6)
-  upload_status             String             @default("pending") @db.VarChar(30)
-  uploaded_at               DateTime?          @db.Timestamptz(6)
-  last_error_code           String?            @db.VarChar(60)
-  created_at                DateTime           @default(now()) @db.Timestamptz(6)
-  created_by                BigInt?
-  updated_at                DateTime?          @db.Timestamptz(6)
-  updated_by                BigInt?
-  is_deleted                Boolean            @default(false)
-  deleted_at                DateTime?          @db.Timestamptz(6)
-  deleted_by                BigInt?
-  recovery_attempts         Int                @default(0) @db.SmallInt
-  next_recovery_at          DateTime?          @db.Timestamptz(6)
-  last_recovery_at          DateTime?          @db.Timestamptz(6)
-  last_recovery_outcome     String?            @db.VarChar(40)
-  needs_review              Boolean            @default(false)
-  review_reason             String?            @db.VarChar(80)
-  pending_size_bytes        BigInt?
-  pending_checksum_sha256   String?            @db.VarChar(64)
-  recovery_lease_token      String?            @db.Uuid
-  recovery_lease_until      DateTime?          @db.Timestamptz(6)
-  central_connection        central_connection @relation(fields: [connection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users_central_files_owner_user_idTousers  users @relation("central_files_owner_user_idTousers", fields: [owner_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users_central_files_uploaded_byTousers    users @relation("central_files_uploaded_byTousers", fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                                       BigInt                @id @default(autoincrement())
+  connection_id                            BigInt
+  owner_user_id                            BigInt
+  uploaded_by                              BigInt
+  display_name                             String
+  stored_name                              String                @db.VarChar(100)
+  file_extension                           String?               @db.VarChar(16)
+  mime_type                                String                @db.VarChar(255)
+  size_bytes                               BigInt                @default(0)
+  checksum_sha256                          String?               @db.VarChar(64)
+  content_version                          Int                   @default(1)
+  external_drive_id                        String
+  external_item_id                         String?
+  external_etag                            String?
+  external_ctag                            String?
+  external_created_at                      DateTime?             @db.Timestamptz(6)
+  external_last_modified_at                DateTime?             @db.Timestamptz(6)
+  upload_status                            String                @default("pending") @db.VarChar(30)
+  uploaded_at                              DateTime?             @db.Timestamptz(6)
+  last_error_code                          String?               @db.VarChar(60)
+  created_at                               DateTime              @default(now()) @db.Timestamptz(6)
+  created_by                               BigInt?
+  updated_at                               DateTime?             @db.Timestamptz(6)
+  updated_by                               BigInt?
+  is_deleted                               Boolean               @default(false)
+  deleted_at                               DateTime?             @db.Timestamptz(6)
+  deleted_by                               BigInt?
+  recovery_attempts                        Int                   @default(0) @db.SmallInt
+  next_recovery_at                         DateTime?             @db.Timestamptz(6)
+  last_recovery_at                         DateTime?             @db.Timestamptz(6)
+  last_recovery_outcome                    String?               @db.VarChar(40)
+  needs_review                             Boolean               @default(false)
+  review_reason                            String?               @db.VarChar(80)
+  pending_size_bytes                       BigInt?
+  pending_checksum_sha256                  String?               @db.VarChar(64)
+  recovery_lease_token                     String?               @db.Uuid
+  recovery_lease_until                     DateTime?             @db.Timestamptz(6)
+  central_connection                       central_connection    @relation(fields: [connection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_central_files_owner_user_idTousers users                 @relation("central_files_owner_user_idTousers", fields: [owner_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_central_files_uploaded_byTousers   users                 @relation("central_files_uploaded_byTousers", fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  business_card_scans_front                business_card_scans[] @relation("business_card_scan_front")
+  business_card_scans_back                 business_card_scans[] @relation("business_card_scan_back")
 
   // Partial unique: use findFirst with is_deleted: false, never findUnique.
   @@unique([external_drive_id, external_item_id], map: "uq_central_file_item", where: raw("((external_item_id IS NOT NULL) AND (is_deleted = false))"))
@@ -671,29 +687,32 @@ model central_files {
   @@index([id], map: "ix_central_files_active", where: raw("(is_deleted = false)"))
   @@index([owner_user_id, created_at(sort: Desc)], map: "ix_central_files_owner", where: raw("(is_deleted = false)"))
   @@index([created_at(sort: Desc)], map: "ix_central_files_created", where: raw("(is_deleted = false)"))
-  @@index([upload_status, updated_at], map: "ix_central_files_needs_attention", where: raw("(upload_status IN ('pending', 'uploading', 'replacing', 'deleting', 'failed'))"))
-  @@index([next_recovery_at, id], map: "ix_central_files_recovery_due", where: raw("((upload_status IN ('pending', 'uploading', 'replacing', 'deleting', 'failed')) AND (needs_review = false))"))
+  @@index([upload_status, updated_at], map: "ix_central_files_needs_attention", where: raw("((upload_status)::text = ANY ((ARRAY['pending'::character varying, 'uploading'::character varying, 'replacing'::character varying, 'deleting'::character varying, 'failed'::character varying])::text[]))"))
+  @@index([next_recovery_at, id], map: "ix_central_files_recovery_due", where: raw("(((upload_status)::text = ANY ((ARRAY['pending'::character varying, 'uploading'::character varying, 'replacing'::character varying, 'deleting'::character varying, 'failed'::character varying])::text[])) AND (needs_review = false))"))
   @@index([updated_at(sort: Desc)], map: "ix_central_files_review", where: raw("(needs_review = true)"))
-  @@schema("storage")
+  @@schema("public")
 }
 
-/// Append-only audit trail (UPDATE/DELETE are rejected by a trigger). Written for administrator actions on other users' files.
-/// workspace_id / actor_user_id / entity_type_id are plain columns here: no relations, so no existing model changes.
+/// Append-only audit trail (UPDATE/DELETE are rejected by the audit_events_immutable trigger). Written for administrator actions
+/// on other users' files. The foreign keys exist so Prisma owns them; the code still writes the plain scalar columns.
 model events {
-  id             BigInt   @id @default(autoincrement())
+  id             BigInt        @id @default(autoincrement())
   workspace_id   BigInt?
   actor_user_id  BigInt?
-  actor_type     String   @default("user") @db.VarChar(20)
-  action         String   @db.VarChar(80)
+  actor_type     String        @default("user") @db.VarChar(20)
+  action         String        @db.VarChar(80)
   entity_type_id BigInt?
   entity_id      BigInt?
   old_values     Json?
   new_values     Json?
   request_id     String?
-  ip_address     String?  @db.Inet
-  occurred_at    DateTime @default(now()) @db.Timestamptz(6)
+  ip_address     String?       @db.Inet
+  occurred_at    DateTime      @default(now()) @db.Timestamptz(6)
+  workspaces     workspaces?   @relation(fields: [workspace_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users          users?        @relation(fields: [actor_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  entity_types   entity_types? @relation(fields: [entity_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@schema("audit")
+  @@schema("public")
 }
 
 /// Upload admission control (rate window, per-user and global concurrency), shared by every backend instance.
@@ -714,25 +733,169 @@ model central_upload_slots {
   @@index([user_id, operation, created_at(sort: Desc)], map: "ix_central_upload_slots_user_recent")
   @@index([user_id, lease_expires_at], map: "ix_central_upload_slots_open", where: raw("(released_at IS NULL)"))
   @@index([created_at], map: "ix_central_upload_slots_created")
-  @@schema("storage")
+  @@schema("public")
 }
 
 /// Persistent server-side sessions. The payload is AES-256-GCM ciphertext (key SESSION_ENCRYPTION_KEY); the key of a row is
 /// sha256(session id). Read and written by EncryptedPgSessionStore through the pg driver, not through this client.
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model sessions {
-  sid_hash               Bytes     @id
+  sid_hash               Bytes    @id
   payload_ciphertext     Bytes
   payload_nonce          Bytes
   payload_auth_tag       Bytes
-  encryption_key_version Int       @default(1) @db.SmallInt
+  encryption_key_version Int      @default(1) @db.SmallInt
   user_id                BigInt?
-  created_at             DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime  @default(now()) @db.Timestamptz(6)
-  expires_at             DateTime  @db.Timestamptz(6)
-  users                  users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  created_at             DateTime @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime @default(now()) @db.Timestamptz(6)
+  expires_at             DateTime @db.Timestamptz(6)
+  users                  users?   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([expires_at], map: "ix_sessions_expires")
   @@index([user_id], map: "ix_sessions_user", where: raw("(user_id IS NOT NULL)"))
-  @@schema("core")
+  @@schema("public")
+}
+
+/// Centralized contacts: one table for the contacts of EVERY module, scoped to a workspace. source_type_id + source_record_id say
+/// where a contact first came from; contact_entity_links records every record (of any entity type) it is linked to.
+model contacts {
+  id                   BigInt                 @id @default(autoincrement())
+  workspace_id         BigInt
+  display_name         String                 @db.VarChar(240)
+  first_name           String?                @db.VarChar(120)
+  last_name            String?                @db.VarChar(120)
+  organization         String?                @db.VarChar(240)
+  job_title            String?                @db.VarChar(180)
+  department           String?                @db.VarChar(180)
+  notes                String?
+  source_type_id       BigInt?
+  source_record_id     BigInt?
+  review_status        String                 @default("unreviewed") @db.VarChar(25)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  created_by           BigInt?
+  updated_at           DateTime?              @db.Timestamptz(6)
+  updated_by           BigInt?
+  is_deleted           Boolean                @default(false)
+  deleted_at           DateTime?              @db.Timestamptz(6)
+  deleted_by           BigInt?
+  workspaces           workspaces             @relation(fields: [workspace_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contact_source_types contact_source_types?  @relation(fields: [source_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contact_methods      contact_methods[]
+  contact_addresses    contact_addresses[]
+  contact_entity_links contact_entity_links[]
+  business_card_scans  business_card_scans[]
+
+  @@unique([id, workspace_id], map: "uq_contact_id_workspace")
+  @@index([workspace_id, id(sort: Desc)], map: "ix_contacts_workspace", where: raw("(NOT is_deleted)"))
+  @@schema("public")
+}
+
+/// E-mail addresses, phone numbers, websites and social profiles of a contact. method_type is the kind; label says which
+/// (mobile, work, linkedin, github, ...). E-mail values are stored lowercase.
+model contact_methods {
+  id           BigInt     @id @default(autoincrement())
+  workspace_id BigInt
+  contact_id   BigInt
+  method_type  String     @db.VarChar(25)
+  label        String?    @db.VarChar(40)
+  value        String
+  is_primary   Boolean    @default(false)
+  is_verified  Boolean    @default(false)
+  created_at   DateTime   @default(now()) @db.Timestamptz(6)
+  created_by   BigInt?
+  updated_at   DateTime?  @db.Timestamptz(6)
+  updated_by   BigInt?
+  is_deleted   Boolean    @default(false)
+  deleted_at   DateTime?  @db.Timestamptz(6)
+  deleted_by   BigInt?
+  workspaces   workspaces @relation(fields: [workspace_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contacts     contacts   @relation(fields: [contact_id, workspace_id], references: [id, workspace_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_contact_method_workspace")
+
+  @@index([contact_id], map: "ix_contact_methods_contact", where: raw("(NOT is_deleted)"))
+  @@index([workspace_id, method_type, value], map: "ix_contact_methods_lookup", where: raw("(NOT is_deleted)"))
+  @@schema("public")
+}
+
+model contact_addresses {
+  id           BigInt     @id @default(autoincrement())
+  workspace_id BigInt
+  contact_id   BigInt
+  address_type String?    @db.VarChar(30)
+  line1        String?
+  city         String?    @db.VarChar(120)
+  region       String?    @db.VarChar(120)
+  postal_code  String?    @db.VarChar(30)
+  country      String?    @db.VarChar(120)
+  created_at   DateTime   @default(now()) @db.Timestamptz(6)
+  created_by   BigInt?
+  updated_at   DateTime?  @db.Timestamptz(6)
+  updated_by   BigInt?
+  is_deleted   Boolean    @default(false)
+  deleted_at   DateTime?  @db.Timestamptz(6)
+  deleted_by   BigInt?
+  workspaces   workspaces @relation(fields: [workspace_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contacts     contacts   @relation(fields: [contact_id, workspace_id], references: [id, workspace_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_contact_address_workspace")
+
+  @@index([contact_id], map: "ix_contact_addresses_contact", where: raw("(NOT is_deleted)"))
+  @@schema("public")
+}
+
+/// Links a contact to any record of any module: entity_type_id (master.entity_types) + entity_id. A business card scan is
+/// entity type 'business_card_scan'; every future module links its own records the same way.
+model contact_entity_links {
+  id                BigInt       @id @default(autoincrement())
+  workspace_id      BigInt
+  contact_id        BigInt
+  entity_type_id    BigInt
+  entity_id         BigInt
+  relationship_type String       @default("source") @db.VarChar(60)
+  created_at        DateTime     @default(now()) @db.Timestamptz(6)
+  created_by        BigInt?
+  updated_at        DateTime?    @db.Timestamptz(6)
+  updated_by        BigInt?
+  is_deleted        Boolean      @default(false)
+  deleted_at        DateTime?    @db.Timestamptz(6)
+  deleted_by        BigInt?
+  workspaces        workspaces   @relation(fields: [workspace_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  entity_types      entity_types @relation(fields: [entity_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contacts          contacts     @relation(fields: [contact_id, workspace_id], references: [id, workspace_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_entity_contact_workspace")
+
+  @@unique([workspace_id, contact_id, entity_type_id, entity_id, relationship_type], map: "uq_contact_entity_link")
+  @@index([entity_type_id, entity_id], map: "ix_contact_entity_links_entity")
+  @@schema("public")
+}
+
+/// One scanned business card. The image lives in the central OneDrive (central_file_id); raw_extraction is what the model
+/// returned, normalized_data is the validated (and possibly user-corrected) data. Approving it creates or updates the contact.
+model business_card_scans {
+  id                   BigInt         @id @default(autoincrement())
+  workspace_id         BigInt
+  owner_user_id        BigInt
+  central_file_id      BigInt
+  /// The photo of the BACK of the card, when there is one. Both photos are read together.
+  back_central_file_id BigInt?
+  contact_id           BigInt?
+  raw_extraction       Json           @default("{}")
+  normalized_data      Json           @default("{}")
+  extraction_model     String         @db.VarChar(100)
+  review_status        String         @default("pending") @db.VarChar(25)
+  reviewed_at          DateTime?      @db.Timestamptz(6)
+  created_at           DateTime       @default(now()) @db.Timestamptz(6)
+  created_by           BigInt?
+  updated_at           DateTime?      @db.Timestamptz(6)
+  updated_by           BigInt?
+  is_deleted           Boolean        @default(false)
+  deleted_at           DateTime?      @db.Timestamptz(6)
+  deleted_by           BigInt?
+  workspaces           workspaces     @relation(fields: [workspace_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                users          @relation(fields: [owner_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  central_files        central_files  @relation("business_card_scan_front", fields: [central_file_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  back_central_files   central_files? @relation("business_card_scan_back", fields: [back_central_file_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contacts             contacts?      @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([workspace_id, owner_user_id, id(sort: Desc)], map: "ix_business_card_scans_owner", where: raw("(NOT is_deleted)"))
+  @@index([central_file_id], map: "ix_business_card_scans_file")
+  @@index([back_central_file_id], map: "ix_business_card_scans_back_file", where: raw("(back_central_file_id IS NOT NULL)"))
+  @@index([contact_id], map: "ix_business_card_scans_contact", where: raw("(contact_id IS NOT NULL)"))
+  @@schema("public")
 }

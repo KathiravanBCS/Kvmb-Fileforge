@@ -1,11 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-/** GET /auth/me. `id` is a BIGINT sent as a decimal string; `displayName` is nullable (core.users). */
+/** GET /auth/me. `id` is a BIGINT sent as a decimal string; `displayName` is nullable (users). */
 export class AuthUserResponseDto {
-  @ApiProperty({ example: '123', description: 'core.users.id (BIGINT) as a decimal string, never a number.' })
+  @ApiProperty({ example: '123', description: 'users.id (BIGINT) as a decimal string, never a number.' })
   id: string;
 
-  @ApiProperty({ type: String, nullable: true, example: null, description: 'core.users.display_name, may be null.' })
+  @ApiProperty({ type: String, nullable: true, example: null, description: 'users.display_name, may be null.' })
   displayName: string | null;
 
   @ApiProperty({ example: 'person@example.com' })

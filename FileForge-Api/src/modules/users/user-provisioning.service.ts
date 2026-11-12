@@ -21,9 +21,9 @@ function isUniqueViolation(error: unknown): boolean {
 /**
  * Maps a verified Microsoft identity to a FileForge user, creating the user on first sign-in.
  *
- * Accounts are matched ONLY by (provider, issuer, subject) in core.user_identities. Email is never used to
+ * Accounts are matched ONLY by (provider, issuer, subject) in user_identities. Email is never used to
  * find or merge accounts: a personal and an organizational Microsoft account with the same address are
- * different identities. core.users has a unique index on lower(email), so the second one cannot get its own
+ * different identities. users has a unique index on lower(email), so the second one cannot get its own
  * user row; that case is refused (`email_in_use`) instead of merged. Linking needs an explicit, verified flow.
  */
 @Injectable()

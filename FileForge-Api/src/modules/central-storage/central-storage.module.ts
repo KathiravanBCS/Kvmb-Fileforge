@@ -48,7 +48,9 @@ const STALE_TEMP_MS = 60 * 60 * 1000;
     CentralRecoveryAdminService,
     CentralRecoveryWorker,
   ],
-  exports: [CentralConnectionService],
+  // The service and access rules other modules (business cards) use to keep their files in central storage, and the upload
+  // admission control their upload routes share with "My Files" (one rate limit per user, whichever route is used).
+  exports: [CentralConnectionService, CentralStorageService, CentralStorageAccessService, CentralUploadAdmissionService],
 })
 export class CentralStorageModule implements OnModuleInit {
   private readonly logger = new Logger(CentralStorageModule.name);

@@ -19,8 +19,11 @@ import { recoveryConfig, sessionStoreConfig, uploadLimitsConfig } from './config
 import centralStorageConfig from './config/central-storage.config';
 import databaseConfig from './config/database.config';
 import { validateEnv } from './config/env.validation';
+import groqConfig from './config/groq.config';
 import { AuthModule } from './modules/auth/auth.module';
+import { BusinessCardsModule } from './modules/business-cards/business-cards.module';
 import { CentralStorageModule } from './modules/central-storage/central-storage.module';
+import { ContactsModule } from './modules/contacts/contacts.module';
 import { MicrosoftModule } from './modules/microsoft/microsoft.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { UsersModule } from './modules/users/users.module';
@@ -40,6 +43,7 @@ import { PrismaModule } from './prisma/prisma.module';
         uploadLimitsConfig,
         recoveryConfig,
         sessionStoreConfig,
+        groqConfig,
       ],
     }),
     LoggerModule.forRootAsync({
@@ -84,6 +88,8 @@ import { PrismaModule } from './prisma/prisma.module';
     WorkspacesModule,
     StorageModule,
     CentralStorageModule,
+    ContactsModule,
+    BusinessCardsModule,
     AuthModule,
   ],
   controllers: [AppController],

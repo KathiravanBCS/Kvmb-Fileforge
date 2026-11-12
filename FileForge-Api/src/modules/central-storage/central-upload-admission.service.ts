@@ -31,7 +31,7 @@ const wait = (seconds: number) =>
  * Upload admission control for central storage: how many uploads a user may START in a window, how many may RUN at once per
  * user, and how many may run at once overall (administrators included, so they cannot starve everyone else).
  *
- * The state lives in PostgreSQL (storage.central_upload_slots), so every backend instance sees the same numbers. Admission is one
+ * The state lives in PostgreSQL (central_upload_slots), so every backend instance sees the same numbers. Admission is one
  * transaction under a single advisory lock: two parallel requests, on any instance, are decided one after the other and the
  * second one sees the first. Every comparison uses the DATABASE clock. A request that is refused records nothing, so it
  * consumes no capacity. A slot is freed when its request ends, only by presenting its own token; if an instance dies the slot's

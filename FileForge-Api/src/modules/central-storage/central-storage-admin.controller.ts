@@ -69,7 +69,7 @@ function parseUserId(raw: string): bigint {
 }
 
 /**
- * System administrators only (SystemAdminGuard checks core.system_admins in PostgreSQL on every request, and the
+ * System administrators only (SystemAdminGuard checks system_admins in PostgreSQL on every request, and the
  * services check again before every write). Every action on another user's file is written to the audit trail first.
  */
 @ApiTags('admin-central-storage')

@@ -26,6 +26,19 @@ export const queryKeys = {
     recoveryItems: (userId: string, state: string) => ['central-storage', userId, 'admin', 'recovery', 'items', state] as const,
     recoveryItem: (userId: string, id: string) => ['central-storage', userId, 'admin', 'recovery', 'item', id] as const,
   },
+  /** Business cards are private to their owner and contacts to a workspace: both keys carry the user and the workspace. */
+  businessCards: {
+    all: (userId: string, workspaceId: string) => ['business-cards', userId, workspaceId] as const,
+    list: (userId: string, workspaceId: string, query: object) => ['business-cards', userId, workspaceId, 'list', query] as const,
+    card: (userId: string, workspaceId: string, id: string) => ['business-cards', userId, workspaceId, 'card', id] as const,
+    image: (userId: string, workspaceId: string, id: string, side: 'front' | 'back') =>
+      ['business-cards', userId, workspaceId, 'image', id, side] as const,
+  },
+  contacts: {
+    all: (userId: string, workspaceId: string) => ['contacts', userId, workspaceId] as const,
+    list: (userId: string, workspaceId: string, query: object) => ['contacts', userId, workspaceId, 'list', query] as const,
+    contact: (userId: string, workspaceId: string, id: string) => ['contacts', userId, workspaceId, 'contact', id] as const,
+  },
   oneDrive: {
     /** Everything cached for one workspace's OneDrive. */
     all: (workspaceId: string) => ['onedrive', workspaceId] as const,

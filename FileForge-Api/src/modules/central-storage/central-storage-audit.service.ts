@@ -9,7 +9,7 @@ import type { Actor } from './types/central-storage.types';
 export type AuditDetails = Record<string, string | number | boolean | null>;
 
 /**
- * Writes the append-only audit trail (audit.events) for central storage. Administrator actions on OTHER users' files
+ * Writes the append-only audit trail (events) for central storage. Administrator actions on OTHER users' files
  * are recorded BEFORE they happen and a failure to record stops the action (fail closed): an admin cannot touch
  * someone's file without leaving a trace.
  */
@@ -35,7 +35,7 @@ export class CentralStorageAuditService {
         entity_id: entity.id ?? null,
         new_values: details,
         request_id: actor.requestId ?? null,
-        // audit.events.ip_address is an INET column: anything that is not a valid address is dropped, not stored.
+        // events.ip_address is an INET column: anything that is not a valid address is dropped, not stored.
         ip_address: actor.ip && isIP(actor.ip) ? actor.ip : null,
       },
     });

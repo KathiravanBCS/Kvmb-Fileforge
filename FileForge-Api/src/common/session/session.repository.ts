@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-/** A stored session as it sits in core.sessions: ciphertext only. */
+/** A stored session as it sits in public.sessions: ciphertext only. */
 export interface StoredSession {
   ciphertext: Buffer;
   nonce: Buffer;
@@ -26,7 +26,7 @@ export interface SessionRepository {
   removeExpired(): Promise<number>;
 }
 
-/** core.sessions over the pg driver. Plain statements with parameters only; nothing here ever sees plaintext session data. */
+/** public.sessions over the pg driver. Plain statements with parameters only; nothing here ever sees plaintext session data. */
 export class PgSessionRepository implements SessionRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -38,7 +38,7 @@ export class PgSessionRepository implements SessionRepository {
       encryption_key_version: number;
     }>(
       `SELECT payload_ciphertext, payload_nonce, payload_auth_tag, encryption_key_version
-         FROM core.sessions
+         FROM public.sessions
         WHERE sid_hash = $1 AND expires_at > clock_timestamp()`,
       [sidHash],
     );
@@ -55,7 +55,7 @@ export class PgSessionRepository implements SessionRepository {
 
   async upsert(write: SessionWrite): Promise<void> {
     await this.pool.query(
-      `INSERT INTO core.sessions
+      `INSERT INTO public.sessions
          (sid_hash, payload_ciphertext, payload_nonce, payload_auth_tag, encryption_key_version, user_id, expires_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (sid_hash) DO UPDATE SET
@@ -65,7 +65,7 @@ export class PgSessionRepository implements SessionRepository {
          encryption_key_version = EXCLUDED.encryption_key_version,
          user_id = EXCLUDED.user_id,
          updated_at = clock_timestamp(),
-         expires_at = LEAST(core.sessions.expires_at, EXCLUDED.expires_at)`,
+         expires_at = LEAST(public.sessions.expires_at, EXCLUDED.expires_at)`,
       [
         write.sidHash,
         write.ciphertext,
@@ -79,11 +79,11 @@ export class PgSessionRepository implements SessionRepository {
   }
 
   async remove(sidHash: Buffer): Promise<void> {
-    await this.pool.query('DELETE FROM core.sessions WHERE sid_hash = $1', [sidHash]);
+    await this.pool.query('DELETE FROM public.sessions WHERE sid_hash = $1', [sidHash]);
   }
 
   async removeExpired(): Promise<number> {
-    const result = await this.pool.query('DELETE FROM core.sessions WHERE expires_at <= clock_timestamp()');
+    const result = await this.pool.query('DELETE FROM public.sessions WHERE expires_at <= clock_timestamp()');
     return result.rowCount ?? 0;
   }
 }

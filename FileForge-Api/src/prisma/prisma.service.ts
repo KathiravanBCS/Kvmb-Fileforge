@@ -8,7 +8,8 @@ import { PrismaClient } from '../../generated/prisma/client';
 import databaseConfig from '../config/database.config';
 
 /**
- * Query client for the existing fileforge_db schema (owned by fileforge_full_schema_v1_1.sql).
+ * Query client for fileforge_db. The schema (PostgreSQL schemas `public` and `master`) is owned by Prisma Migrate: prisma/schema.prisma
+ * plus prisma/migrations.
  *
  * - The connection is lazy: the API still boots if the database is down, and a query then fails
  *   (the login flow reports that as `service_unavailable`).

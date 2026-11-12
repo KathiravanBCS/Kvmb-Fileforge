@@ -6,7 +6,7 @@ server-side session, and gives the browser only an opaque, `HttpOnly` session co
 ```text
 React (localhost:3000) ──cookie──▶ NestJS (localhost:4000) ──OIDC code flow + PKCE──▶ Microsoft Entra ID
                                         │  ├─ session store (in memory, DEV ONLY): user + Microsoft token cache
-                                        │  └─ PostgreSQL fileforge_db: core.users / user_identities / workspaces
+                                        │  └─ PostgreSQL fileforge_db: users / user_identities / workspaces
                                         └──delegated tokens──▶ Microsoft Graph (later phases)
 ```
 

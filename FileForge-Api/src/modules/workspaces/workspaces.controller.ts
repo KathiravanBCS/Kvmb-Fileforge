@@ -16,7 +16,7 @@ class WorkspaceSummaryDto implements WorkspaceSummary {
   @ApiProperty({ example: 'personal', description: 'personal | team' })
   type: string;
 
-  @ApiProperty({ example: 'owner', description: 'Your role code in this workspace (core.roles).' })
+  @ApiProperty({ example: 'owner', description: 'Your role code in this workspace (roles).' })
   role: string;
 }
 

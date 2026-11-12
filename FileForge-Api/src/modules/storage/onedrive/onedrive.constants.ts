@@ -17,12 +17,12 @@ export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 export const MAX_LIST_ITEMS = 1000;
 export const LIST_PAGE_SIZE = 200;
 
-/** Workspace role codes (core.roles). Operations are allowed by role code per workspace; there is no global role. */
+/** Workspace role codes (roles). Operations are allowed by role code per workspace; there is no global role. */
 export const READ_ROLES = ['owner', 'admin', 'editor', 'viewer'];
 export const WRITE_ROLES = ['owner', 'admin', 'editor'];
 export const MANAGE_ROLES = ['owner', 'admin'];
 
-/** Module folders under the root, and the `storage.folder_mappings.module_code` each one is registered under. */
+/** Module folders under the root, and the `folder_mappings.module_code` each one is registered under. */
 export const MODULE_FOLDERS: readonly { folderName: string; moduleCode: string }[] = [
   { folderName: 'business-cards', moduleCode: 'business_card' },
   { folderName: 'email-attachments', moduleCode: 'email_attachments' },
